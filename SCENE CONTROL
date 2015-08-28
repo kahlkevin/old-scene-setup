@@ -5,7 +5,7 @@ definition(
     description: "This app sets a lighting scene for 1 OR 2 groups of your HUE light switches to specific colors / levels, and/or turn 1 or 2 sets of switches on / off.",
     category: "My Apps",
     iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
-    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
+    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png"
 )
 
 preferences {
@@ -34,8 +34,8 @@ preferences {
 		input "switch2", "capability.switch", multiple: true, required: false
 	}
   	section("And then off when there's been no movement for..."){
-		input "delayMinutes", "number", title: "Minutes?"
-        input "motion", "capability.motionSensor", title: "on this sensor...", required: true, multiple: true
+		input "delayMinutes", "number", title: "Minutes?", required: false
+        input "motion", "capability.motionSensor", title: "on this sensor...", required: false, multiple: true
 
 	}
 }
@@ -56,40 +56,10 @@ def updated() {
 
 def appTouch(evt) {
 	log.info evt.value
-    if (group1){
-     	def myLightLevel = state.lightLevel1 as Integer	
-	    def myhueColor = state.hueColor1 as Integer
-    	def mySat = state.saturation1 as Integer
-		def newValue = [hue: myhueColor, saturation: mySat, level: myLightLevel]
-
-   		group1.each {    
-		    it.setColor(newValue)       
-		}
-	}
-    
-    if (group2){
-     	def myLightLevel = state.lightLevel2 as Integer	
-	    def myhueColor = state.hueColor2 as Integer
-    	def mySat = state.saturation2 as Integer
-		def newValue = [hue: myhueColor, saturation: mySat, level: myLightLevel]
-        
-        group2.each {    
-		    it.setColor(newValue)       
-		}
-
-    }
-
-	if(switch1){
-    	switch1.on()
-    }
-    if(switch2){
-    	switch2.off()
-    }
-
+	doIt()
 }
 
-def onHandler(evt) {
-	log.info evt.value
+def setLightColors() {
     if (group1){
      	def myLightLevel = state.lightLevel1 as Integer	
 	    def myhueColor = state.hueColor1 as Integer
@@ -112,21 +82,32 @@ def onHandler(evt) {
 		    it.setColor(newValue)       
 		}
     }
-    
+}
+
+def doIt() {
 	if(switch1){
     	switch1.on()
     }
+
+	runIn(1, setLightColors, [overwrite: true])
+
     if(switch2){
     	switch2.off()
     }
+}
 
+def onHandler(evt) {
+	log.info evt.value
+	doIt()
 }
 
 
 def initialize() {
 	subscribe(app, appTouch)
 	subscribe(theSwitch, "switch.On", onHandler)
-    subscribe(motion, "motion.inactive", offHandler)
+    if (delayMinutes > 0 && motion != null){
+    	subscribe(motion, "motion.inactive", offHandler)
+    }
 
     colorSelection1()
     colorSelection2()
